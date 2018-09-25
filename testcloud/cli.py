@@ -373,6 +373,19 @@ def _stop_instance(args):
     tc_instance.stop()
 
 
+def _ssh_to_instance(args):
+    log.debug("SSH to instance: {}".format(args.name))
+    tc_instance = instance.find_instance(args.name, connection=args.connection)
+
+    if tc_instance is None:
+        raise TestcloudCliError("Cannot SSH to instance {} because it does "
+                                "not exist".format(args.name))
+
+    vm_ip = tc_instance.get_ip()
+
+    os.system("ssh {}@{}".format(args.user, vm_ip))
+
+
 def _remove_instance(args):
     """Handler for 'instance remove' command. Expects the following elements in args:
         * name(str)
@@ -485,6 +498,13 @@ def get_argparser():
     instarg_stop.add_argument("name",
                               help="name of instance to stop")
     instarg_stop.set_defaults(func=_stop_instance)
+
+    # instance ssh
+    instarg_ssh = instarg_subp.add_parser("ssh", help="connect to instance via SSH")
+    instarg_ssh.add_argument("name", help="name of instance to connect")
+    instarg_ssh.add_argument("-u", "--user", help="username", default="root")
+    instarg_ssh.set_defaults(func=_ssh_to_instance)
+
     # instance remove
     instarg_remove = instarg_subp.add_parser("remove", help="remove instance")
     instarg_remove.add_argument("name",
