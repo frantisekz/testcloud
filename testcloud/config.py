@@ -100,6 +100,7 @@ class ConfigData(object):
     # libvirt domain XML Template
     # This lives either in the DEFAULT_CONF_DIR or DATA_DIR
     XML_TEMPLATE = "domain-template.jinja"
+    XML_TEMPLATE_AARCH64 = "domain-template-aarch64.jinja"
 
     # Data for cloud-init
 

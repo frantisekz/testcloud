@@ -13,6 +13,7 @@ import subprocess
 import glob
 import logging
 import time
+import platform
 
 import libvirt
 import shutil
@@ -177,7 +178,7 @@ class Instance(object):
     defined on the local system, using an existing :py:class:`Image`.
     """
 
-    def __init__(self, name, image=None, connection='qemu:///system', hostname=None):
+    def __init__(self, name, image=None, connection='qemu:///system', hostname=None, forcearch=None):
         self.name = name
         self.image = image
         self.connection = connection
@@ -188,6 +189,7 @@ class Instance(object):
         self.xml_path = "{}/{}-domain.xml".format(self.path, self.name)
 
         self.ram = config_data.RAM
+        self.forcearch = forcearch
         # desired size of disk, in GiB
         self.disk_size = config_data.DISK_SIZE
         self.vnc = False
@@ -362,7 +364,10 @@ class Instance(object):
         jinjaLoader = jinja2.FileSystemLoader(searchpath=[config.DEFAULT_CONF_DIR,
                                                           config_data.DATA_DIR])
         jinjaEnv = jinja2.Environment(loader=jinjaLoader)
-        xml_template = jinjaEnv.get_template(config_data.XML_TEMPLATE)
+        if platform.machine() == "aarch64" or self.forcearch == "aarch64":
+            xml_template = jinjaEnv.get_template(config_data.XML_TEMPLATE_AARCH64)
+        else:
+            xml_template = jinjaEnv.get_template(config_data.XML_TEMPLATE)
 
         # Stuff our values in a dict
         instance_values = {'domain_name': self.name,

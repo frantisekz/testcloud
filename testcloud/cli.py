@@ -78,7 +78,7 @@ def _create_instance(args):
                                                        args.name))
 
     else:
-        tc_instance = instance.Instance(args.name, image=tc_image, connection=args.connection)
+        tc_instance = instance.Instance(args.name, image=tc_image, connection=args.connection, forcearch=args.forcearch)
 
         # set ram size
         tc_instance.ram = args.ram
@@ -296,6 +296,11 @@ def get_argparser():
     instarg_create.add_argument("--vnc",
                                 help="Turns on vnc at :1 to the instance.",
                                 action="store_true")
+    instarg_create.add_argument("--forcearch",
+                                help="Force to use different architecture.\n"
+                                "Only aarch64 is supported at the moment.",
+                                type=str,
+                                default=None)
     instarg_create.add_argument("--atomic",
                                 help="Use this flag if you're booting an Atomic Host.",
                                 action="store_true")
