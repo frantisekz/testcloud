@@ -11,6 +11,7 @@ import testcloud
 
 DEFAULT_CONF_DIR = os.path.abspath(os.path.dirname(testcloud.__file__)) + '/../conf'
 
+# order represents precedence
 CONF_DIRS = [DEFAULT_CONF_DIR,
              '{}/.config/testcloud'.format(os.environ['HOME']),
              '/etc/testcloud'
@@ -35,32 +36,34 @@ def get_config():
 
 
 def _parse_config():
-    '''Parse config file in a supported location and merge with default values.
+    '''Parse config files in a supported locations and merge with default values.
 
     :return: loaded config data merged with defaults from :class:`.ConfigData`
     '''
 
     config = ConfigData()
-    config_filename = _find_config_file()
+    config_filenames = _find_config_files()
 
-    if config_filename is not None:
+    # iterate through found configs and merge them from the lowest precedence
+    for config_filename in config_filenames[::-1]:
         loaded_config = _load_config(config_filename)
         config.merge_object(loaded_config)
 
     return config
 
 
-def _find_config_file():
+def _find_config_files():
     '''Look in supported config dirs for a configuration file.
 
-    :return: filename of first discovered file, None if no files are found
+    :return: list of filenames of existing config file, [] if no files are found
     '''
 
+    conf_files = []
     for conf_dir in CONF_DIRS:
         conf_file = '{}/{}'.format(conf_dir, CONF_FILE)
         if os.path.exists(conf_file):
-            return conf_file
-    return None
+            conf_files.append(conf_file)
+    return conf_files
 
 
 def _load_config(conf_filename):
