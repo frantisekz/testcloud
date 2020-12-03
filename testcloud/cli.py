@@ -59,22 +59,26 @@ def _init(args):
         user_data_dict = {
             "users": ["default", {
                 "name": "fedora",
-                "password": "%s",
-                "chpasswd": { "expire": False },
                 "ssh_pwauth": True,
-                "ssh-authorized-keys": []
-            }]
+                # "ssh-authorized-keys": [],
+            }],
+            "chpasswd": {
+                "list": "",
+                "expire": False
+            }
         }
-        user_data_username = input("Username (leave blank for default: fedora): ")
-        if user_data_username != '':
-            user_data_dict["users"][1]["name"] = user_data_username
+        user_data_username = input("Username (leave blank for %s): " % user)
+        if user_data_username == '':
+            user_data_username = user
+        user_data_dict["users"][1]["name"] = user_data_username
+        user_data_dict["chpasswd"]["list"] = "%s:%%s" % (user_data_username)
         user_data_want_ssh_key = input("Do you want to add your ssh public key [Y/n]: ")
         if user_data_want_ssh_key == '' or user_data_want_ssh_key == 'y':
             if not os.path.exists(os.path.expanduser("~/.ssh/id_rsa.pub")):
-                print("Bazinga! You don't have any ssh key!")
+                print("Bazinga! You don't have ~/.ssh/id_rsa.pub")
             else:
                 with open(os.path.expanduser("~/.ssh/id_rsa.pub")) as ssh_key_file:
-                    user_data_dict["users"][1]["ssh-authorized-keys"].append(ssh_key_file.read())
+                    user_data_dict["users"][1]["ssh-authorized-keys"] = [ssh_key_file.read().strip()]
 
         with open(os.path.join(confdir, "settings.py"), "a+") as testcloud_config:
             testcloud_config.write('\nUSER_DATA="""#cloud-config\n%s"""\n' % yaml.dump(user_data_dict))
