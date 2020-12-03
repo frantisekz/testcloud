@@ -9,11 +9,14 @@ This is the primary user entry point for testcloud
 
 import argparse
 import logging
+import grp
 import os
+import pathlib
 import sys
 import libvirt
 import requests
 import re
+import yaml
 from . import config
 from . import image
 from . import instance
@@ -31,6 +34,58 @@ log.addHandler(logging.NullHandler())  # this is needed when running in library 
 
 description = """Testcloud is a small wrapper program designed to quickly and
 simply boot images designed for cloud systems."""
+
+################################################################################
+# testcloud initial configuration
+################################################################################
+def _init(args):
+    user = os.getlogin()
+    print("Testctloud initial configuration for user %s" % user)
+    user_groups = [g.gr_name for g in grp.getgrall() if user in g.gr_mem]
+    if user != "root" and "wheel" not in user_groups:
+        print("User %s can't use sudo, exiting..." % user)
+        sys.exit(1)
+
+    group_add_flag = False
+    if "testcloud" not in user_groups:
+        print("Adding user %s to group testcloud" % user)
+        os.system("sudo usermod -a -G testcloud %s" % user)
+        group_add_flag = True
+
+    want_user_data = input("Do you want to create cloud-init user data [Y/n]: ").lower()
+    if want_user_data == '' or want_user_data == 'y':
+        confdir = os.path.expanduser("~/.config/testcloud/")
+        pathlib.Path(confdir).mkdir(parents=True, exist_ok=True)
+        user_data_dict = {
+            "users": ["default", {
+                "name": "fedora",
+                "password": "%s",
+                "chpasswd": { "expire": False },
+                "ssh_pwauth": True,
+                "ssh-authorized-keys": []
+            }]
+        }
+        user_data_username = input("Username (leave blank for default: fedora): ")
+        if user_data_username != '':
+            user_data_dict["users"][1]["name"] = user_data_username
+        user_data_want_ssh_key = input("Do you want to add your ssh public key [Y/n]: ")
+        if user_data_want_ssh_key == '' or user_data_want_ssh_key == 'y':
+            if not os.path.exists(os.path.expanduser("~/.ssh/id_rsa.pub")):
+                print("Bazinga! You don't have any ssh key!")
+            else:
+                with open(os.path.expanduser("~/.ssh/id_rsa.pub")) as ssh_key_file:
+                    user_data_dict["users"][1]["ssh-authorized-keys"].append(ssh_key_file.read())
+
+        with open(os.path.join(confdir, "settings.py"), "a+") as testcloud_config:
+            testcloud_config.write('\nUSER_DATA="""#cloud-config\n%s"""\n' % yaml.dump(user_data_dict))
+
+        print(yaml.dump(user_data_dict))
+
+    print("Initial configuration done.")
+    if group_add_flag:
+        print("")
+        print("Reboot, relogin or run following command to use testcloud:")
+        print("su - $USER")
 
 
 ################################################################################
@@ -283,6 +338,10 @@ def get_argparser():
     subparsers = parser.add_subparsers(title="Command Types",
                                        description="Types of commands available",
                                        help="<command> --help")
+
+    initarg = subparsers.add_parser("init",
+                                    help="run testcloud initial configuration")
+    initarg.set_defaults(func=_init)
 
     instarg = subparsers.add_parser("instance", help="help on instance options")
     instarg.add_argument("-c",
